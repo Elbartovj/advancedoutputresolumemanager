@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Éditeur Advanced Output pour Resolume (Version Finale Optimisée)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #1a1a1a;
+            --bg-medium: #2a2a2a;
+            --bg-light: #3c3c3c;
+            --text-light: #e0e0e0;
+            --text-dark: #a0a0a0;
+            --accent: #00bcd4;
+            --accent-hover: #00dcf4;
+            --border-color: #4a4a4a;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            overflow: hidden;
+        }
+        .main-container {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+        }
+        .panels-container {
+            display: grid;
+            grid-template-columns: 280px 1fr 320px;
+            height: 100%;
+            gap: 8px;
+            padding: 8px;
+            overflow: hidden;
+        }
+        .panel {
+            background-color: var(--bg-medium);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            display: grid;
+            grid-template-rows: auto 1fr;
+            overflow: hidden;
+        }
+        .panel-header {
+            background-color: var(--bg-light);
+            padding: 8px 12px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        .panel-content {
+            overflow-y: auto;
+            min-height: 0;
+        }
+        #hierarchy-tree {
+            padding: 12px;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-medium); }
+        ::-webkit-scrollbar-thumb { background: var(--bg-light); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        .top-bar {
+            background-color: var(--bg-medium);
+            padding: 8px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+        .btn, #language-switcher {
+            background-color: var(--bg-light);
+            color: var(--text-light);
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+        .btn:hover, #language-switcher:hover {
+            background-color: #454545;
+            border-color: var(--accent);
+        }
+        .btn.active {
+            background-color: var(--accent);
+            color: var(--bg-dark);
+        }
+        #language-switcher {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            padding-right: 2rem;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a0a0a0' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+        }
+        
+        #hierarchy-tree ul {
+            padding-left: 16px;
+            list-style-type: none;
+        }
+        #hierarchy-tree li { padding: 2px 0; border-radius: 4px; }
+        #hierarchy-tree .item-content {
+            display: flex; align-items: center; gap: 6px; padding: 4px; cursor: pointer;
+        }
+        #hierarchy-tree .item-content:hover { background-color: var(--bg-light); }
+        #hierarchy-tree li.selected > .item-content { background-color: var(--accent); color: var(--bg-dark); }
+        .item-controls { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+        .item-controls i { color: var(--text-dark); visibility: hidden; }
+        .item-content:hover .item-controls i, li.selected .item-controls i { visibility: visible; }
+        .item-controls i:hover { color: var(--text-light); }
+        #hierarchy-tree li.selected .item-controls i { color: var(--bg-dark); }
+        .screen-toggle-icon { width: 16px; text-align: center; }
+
+        #canvas-container {
+            padding: 0; background-color: black; position: relative; cursor: default;
+        }
+        #main-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #selection-rect {
+            position: absolute; border: 1px dashed var(--accent);
+            background-color: rgba(0, 188, 212, 0.2); pointer-events: none;
+        }
+
+        #inspector-panel .prop-grid, .modal-content .prop-grid {
+            display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center;
+        }
+        #inspector-panel label, .modal-content label { font-size: 0.9em; color: var(--text-dark); }
+        #inspector-panel input, #inspector-panel select, #inspector-panel textarea, .modal-content input, .modal-content select, .modal-content textarea {
+            width: 100%; background-color: var(--bg-dark); border: 1px solid var(--border-color);
+            border-radius: 4px; padding: 6px; color: var(--text-light);
+        }
+        
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); display: flex;
+            justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background-color: var(--bg-medium); padding: 24px; border-radius: 8px;
+            border: 1px solid var(--border-color); width: 90%; max-width: 800px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="top-bar">
+            <button id="new-project-btn" class="btn"><i class="fas fa-file"></i> <span data-i18n="newProject">Nouveau Projet</span></button>
+            <button id="open-xml-btn" class="btn"><i class="fas fa-folder-open"></i> <span data-i18n="openXml">Ouvrir XML</span></button>
+            <input type="file" id="xml-file-input" accept=".xml" class="hidden">
+            <button id="save-xml-btn" class="btn"><i class="fas fa-save"></i> <span data-i18n="saveXml">Enregistrer XML</span></button>
+            
+            <div class="w-px h-6 bg-gray-600"></div>
+            
+            <button id="add-guide-btn" class="btn"><i class="fas fa-map"></i> <span data-i18n="addGuide">Ajouter Guide</span></button>
+            <input type="file" id="guide-file-input" accept="image/*" class="hidden">
+            
+            <button id="import-image-btn" class="btn"><i class="fas fa-image"></i> <span data-i18n="importImage">Importer Image</span></button>
+            <input type="file" id="image-file-input" accept="image/*" class="hidden">
+
+            <button id="import-svg-btn" class="btn"><i class="fas fa-bezier-curve"></i> Importer SVG</button>
+            <input type="file" id="svg-file-input" accept=".svg" class="hidden">
+            
+            <div class="w-px h-6 bg-gray-600"></div>
+            
+            <button id="add-screen-btn" class="btn"><i class="fas fa-desktop"></i> <span data-i18n="newScreen">Nouveau Screen</span></button>
+            <button id="add-slice-btn" class="btn"><i class="fas fa-clone"></i> <span data-i18n="newSlice">Nouveau Slice</span></button>
+            <button id="add-poly-btn" class="btn"><i class="fas fa-draw-polygon"></i> <span data-i18n="newPolygon">Nouveau Polygone (P)</span></button>
+            <button id="add-mask-btn" class="btn"><i class="fas fa-mask"></i> <span data-i18n="newMask">Nouveau Masque (M)</span></button>
+            
+            <div class="w-px h-6 bg-gray-600"></div>
+            
+            <button id="ai-layout-btn" class="btn"><i class="fas fa-magic"></i> <span data-i18n="aiAssistant">✨ Assistant IA</span></button>
+            
+            <div class="flex-grow"></div>
+            <select id="language-switcher">
+                <option value="fr">Français</option>
+                <option value="en">English</option>
+                <option value="es">Español</option>
+            </select>
+        </div>
+
+        <div class="panels-container">
+            <div id="hierarchy-panel" class="panel">
+                <div class="panel-header" data-i18n="hierarchy">Hiérarchie</div>
+                <div class="panel-content">
+                    <div id="hierarchy-tree">
+                        <p class="text-gray-400" data-i18n="hierarchyHelp">Créez un nouveau projet ou ouvrez un fichier XML.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="canvas-panel" class="panel">
+                 <div class="panel-header flex justify-between items-center">
+                    <span data-i18n="canvas">Canevas</span>
+                    <span id="canvas-size-label" class="text-sm text-gray-400" data-i18n="projectNotLoaded">Projet non chargé</span>
+                </div>
+                <div id="canvas-container" class="panel-content">
+                    <canvas id="main-canvas"></canvas>
+                    <div id="selection-rect" class="hidden"></div>
+                </div>
+            </div>
+
+            <div id="inspector-panel" class="panel">
+                <div class="panel-header" data-i18n="inspector">Inspecteur</div>
+                <div class="panel-content" id="inspector-content">
+                    <p class="text-gray-400" data-i18n="inspectorHelp">Sélectionnez un élément pour voir ses propriétés.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="new-project-modal" class="modal-overlay hidden">
+        <div class="modal-content max-w-sm">
+             <h2 class="text-xl font-bold mb-4" data-i18n="modalNewProjectTitle">Nouveau Projet</h2>
+             <div class="prop-grid gap-y-4">
+                <label data-i18n="widthPx">Largeur (px)</label>
+                <input type="number" id="comp-width" value="1920">
+                <label data-i18n="heightPx">Hauteur (px)</label>
+                <input type="number" id="comp-height" value="1080">
+             </div>
+             <div class="mt-6 flex justify-end gap-4">
+                <button id="cancel-new-project-btn" class="btn" data-i18n="cancel">Annuler</button>
+                <button id="confirm-new-project-btn" class="btn" data-i18n="create">Créer</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="vectorize-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 class="text-xl font-bold mb-4" data-i18n="modalVectorizeTitle">Vectoriser / Importer</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <h3 class="font-semibold mb-2" data-i18n="preview">Aperçu</h3>
+                    <div id="preview-canvas-container" class="w-full h-64 bg-black border border-gray-500 rounded overflow-hidden relative">
+                         <canvas id="preview-canvas"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-semibold mb-2" data-i18n="settings">Paramètres</h3>
+                    <div class="prop-grid gap-y-4">
+                        <label data-i18n="threshold">Seuil (0-255)</label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="threshold-slider" min="0" max="255" value="128" class="w-full">
+                            <span id="threshold-value" class="w-8 text-center">128</span>
+                        </div>
+                        <label data-i18n="minArea">Aire min. (px)</label>
+                        <div class="flex items-center gap-2">
+                             <input type="range" id="min-area-slider" min="10" max="2000" value="50" class="w-full">
+                             <span id="min-area-value" class="w-12 text-center">50</span>
+                        </div>
+                        <label data-i18n="simplify">Simplification</label>
+                        <div class="flex items-center gap-2">
+                             <input type="range" id="simplify-slider" min="0.1" max="10" step="0.1" value="1.5" class="w-full">
+                             <span id="simplify-value" class="w-12 text-center">1.5</span>
+                        </div>
+                         <label data-i18n="maxPoints">Points max/poly</label>
+                        <div class="flex items-center gap-2">
+                             <input type="range" id="max-points-slider" min="3" max="500" value="150" class="w-full">
+                             <span id="max-points-value" class="w-12 text-center">150</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-4">
+                <button id="cancel-vectorize-btn" class="btn" data-i18n="cancel">Annuler</button>
+                <button id="confirm-vectorize-btn" class="btn" data-i18n="vectorizeAndAdd">Générer les Polygones</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ai-layout-modal" class="modal-overlay hidden">
+        <div class="modal-content max-w-lg">
+             <h2 class="text-xl font-bold mb-4" data-i18n="aiAssistantTitle">✨ Assistant de Disposition IA</h2>
+             <p class="text-sm text-gray-400 mb-4" data-i18n="aiAssistantHelp">Décrivez la disposition géométrique ou la forme complexe que vous souhaitez créer.</p>
+             <div class="prop-grid gap-y-4">
+                <label for="ai-prompt" data-i18n="yourRequest">Votre demande :</label>
+                <textarea id="ai-prompt" class="w-full bg-gray-800 border border-gray-600 rounded p-2 h-24" data-i18n-placeholder="aiPromptPlaceholder"></textarea>
+             </div>
+             <div class="mt-6 flex justify-end gap-4 items-center">
+                <div id="ai-spinner" class="hidden">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <button id="cancel-ai-layout-btn" class="btn" data-i18n="cancel">Annuler</button>
+                <button id="confirm-ai-layout-btn" class="btn" data-i18n="generate">Générer</button>
+            </div>
+        </div>
+    </div>
+
+
+<script>
+// --- CONFIGURATION ---
+const apiKey = ""; // <-- METTEZ VOTRE CLÉ API PERSONNELLE ICI
+
+// --- I18N ---
+const translations = {
+    fr: {
+        newProject: "Nouveau Projet", openXml: "Ouvrir XML", saveXml: "Enregistrer XML", addGuide: "Ajouter Guide", importImage: "Importer Image", newScreen: "Nouveau Screen", newSlice: "Nouveau Slice", newPolygon: "Nouveau Polygone (P)", newMask: "Nouveau Masque (M)", aiAssistant: "✨ Assistant IA",
+        hierarchy: "Hiérarchie", canvas: "Canevas", inspector: "Inspecteur", projectNotLoaded: "Projet non chargé", hierarchyHelp: "Créez un nouveau projet ou ouvrez un fichier XML.", inspectorHelp: "Sélectionnez un élément pour voir ses propriétés.",
+        modalNewProjectTitle: "Nouveau Projet", widthPx: "Largeur (px)", heightPx: "Hauteur (px)", cancel: "Annuler", create: "Créer",
+        modalVectorizeTitle: "Vectoriser / Importer", preview: "Aperçu", settings: "Paramètres", threshold: "Seuil (0-255)", minArea: "Aire min. (px)", simplify: "Simplification", maxPoints: "Points max. par polygone", vectorizeAndAdd: "Générer les Polygones",
+        aiAssistantTitle: "✨ Assistant de Disposition IA", aiAssistantHelp: "Décrivez la disposition géométrique ou la forme complexe que vous souhaitez créer.", yourRequest: "Votre demande :", aiPromptPlaceholder: "Ex: Une grille de 3x3 slices, une silhouette de la Tour Eiffel...", generate: "Générer",
+        alertNoProject: "Veuillez créer un projet avant d'ajouter un calque.", alertNoScreen: "Aucun Screen sélectionné ou existant.", alertNoProjectSave: "Aucun projet à sauvegarder.",
+        alertHiddenDelete: (count) => `${count} élément(s) masqué(s) dans la sélection n'ont pas été supprimé(s).`,
+        nameSlice: "Slice", namePolygon: "Polygone", nameMask: "Masque", nameScreen: "Screen",
+        propName: "Nom", propId: "ID", propType: "Type", propPoints: "Points"
+    },
+    en: {
+        newProject: "New Project", openXml: "Open XML", saveXml: "Save XML", addGuide: "Add Guide", importImage: "Import Image", newScreen: "New Screen", newSlice: "New Slice", newPolygon: "New Polygon (P)", newMask: "New Mask (M)", aiAssistant: "✨ AI Assistant",
+        hierarchy: "Hierarchy", canvas: "Canvas", inspector: "Inspector", projectNotLoaded: "No project loaded", hierarchyHelp: "Create a new project or open an XML file.", inspectorHelp: "Select an item to see its properties.",
+        modalNewProjectTitle: "New Project", widthPx: "Width (px)", heightPx: "Height (px)", cancel: "Cancel", create: "Create",
+        modalVectorizeTitle: "Vectorize / Import", preview: "Preview", settings: "Settings", threshold: "Threshold (0-255)", minArea: "Min Area (px)", simplify: "Simplification", maxPoints: "Max points per polygon", vectorizeAndAdd: "Generate Polygons",
+        aiAssistantTitle: "✨ AI Layout Assistant", aiAssistantHelp: "Describe the geometric layout or complex shape you want to create.", yourRequest: "Your request:", aiPromptPlaceholder: "Ex: A 3x3 grid of slices, a silhouette of the Eiffel Tower...", generate: "Generate",
+        alertNoProject: "Please create a project before adding a layer.", alertNoScreen: "No Screen selected or available.", alertNoProjectSave: "No project to save.",
+        alertHiddenDelete: (count) => `${count} hidden item(s) in selection were not deleted.`,
+        nameSlice: "Slice", namePolygon: "Polygon", nameMask: "Mask", nameScreen: "Screen",
+        propName: "Name", propId: "ID", propType: "Type", propPoints: "Points"
+    },
+    es: {
+        newProject: "Nuevo Proyecto", openXml: "Abrir XML", saveXml: "Guardar XML", addGuide: "Añadir Guía", importImage: "Importar Imagen", newScreen: "Nueva Pantalla", newSlice: "Nuevo Slice", newPolygon: "Nuevo Polígono (P)", newMask: "Nueva Máscara (M)", aiAssistant: "✨ Asistente IA",
+        hierarchy: "Jerarquía", canvas: "Lienzo", inspector: "Inspector", projectNotLoaded: "Ningún proyecto cargado", hierarchyHelp: "Cree un nuevo proyecto o abra un archivo XML.", inspectorHelp: "Seleccione un elemento para ver sus propiedades.",
+        modalNewProjectTitle: "Nuevo Proyecto", widthPx: "Ancho (px)", heightPx: "Alto (px)", cancel: "Cancelar", create: "Crear",
+        modalVectorizeTitle: "Vectorizar Imagen", preview: "Vista Previa", settings: "Ajustes", threshold: "Umbral (0-255)", minArea: "Área mín. (px)", simplify: "Factor de simplificación", maxPoints: "Puntos máx. por polígono", vectorizeAndAdd: "Vectorizar y Añadir",
+        aiAssistantTitle: "✨ Asistente de Disposición IA", aiAssistantHelp: "Describa la disposición geométrica o la forma compleja que desea crear.", yourRequest: "Su petición:", aiPromptPlaceholder: "Ej: Una cuadrícula de 3x3 slices, una silueta de la Torre Eiffel...", generate: "Generar",
+        alertNoProject: "Por favor, cree un proyecto antes de añadir una capa.", alertNoScreen: "No hay ninguna pantalla seleccionada o disponible.", alertNoProjectSave: "No hay proyecto para guardar.",
+        alertHiddenDelete: (count) => `${count} elemento(s) oculto(s) en la selección no se eliminaron.`,
+        nameSlice: "Slice", namePolygon: "Polígono", nameMask: "Máscara", nameScreen: "Pantalla",
+        propName: "Nombre", propId: "ID", propType: "Tipo", propPoints: "Puntos"
+    }
+};
+let currentLang = localStorage.getItem('resolumeEditorLang') || 'fr';
+
+// --- UTILITIES ---
+const generateUniqueId = () => String(Date.now() + Math.floor(Math.random() * 1000));
+const pointDistance = (p1, p2) => Math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2);
+
+// --- STATE MANAGEMENT ---
+let projectData = null;
+let appState = {
+    selectedItemIds: [],
+    lastClickedItemId: null,
+    guideImage: { src: null, element: null },
+    creationMode: null,
+    hoverState: null,
+    mainViewTransform: { scale: 1, offsetX: 0, offsetY: 0 },
+    previewViewTransform: { scale: 1, offsetX: 0, offsetY: 0 },
+    dragState: { isDragging: false, isPanning: false, isSelecting: false, startX: 0, startY: 0 },
+    aiGeneratedImage: null,
+    history: [],
+    historyIndex: -1
+};
+
+// --- DATA MODEL PARSING & BUILDING ---
+function parseXml(xmlString) { const parser = new DOMParser(), xmlDoc = parser.parseFromString(xmlString, "application/xml"), project = { screens: [] }, screenSetup = xmlDoc.querySelector("ScreenSetup"); if (!screenSetup) return project; const compSize = screenSetup.querySelector("CurrentCompositionTextureSize"); project.compositionWidth = compSize ? parseInt(compSize.getAttribute('width')) : 1920; project.compositionHeight = compSize ? parseInt(compSize.getAttribute('height')) : 1080; xmlDoc.querySelectorAll("Screen").forEach(screenNode => { const screenEnabledNode = screenNode.querySelector('Params[name="Params"] Param[name="Enabled"]'), screen = { uniqueId: screenNode.getAttribute('uniqueId'), name: screenNode.getAttribute('name'), enabled: screenEnabledNode ? screenEnabledNode.getAttribute('value') === '1' : true, collapsed: false, layers: [] }; screenNode.querySelectorAll(":scope > layers > *").forEach(layerNode => { const commonParams = layerNode.querySelector('Params[name="Common"] Param[name="Name"]'), enabledNode = layerNode.querySelector('Params[name="Common"] Param[name="Enabled"]'), layer = { type: layerNode.tagName, uniqueId: layerNode.getAttribute('uniqueId'), name: commonParams ? commonParams.getAttribute('value') : layerNode.tagName, enabled: enabledNode ? enabledNode.getAttribute('value') === '1' : true, points: [] }; let pointsNode = layerNode.querySelector('InputContour > points, OutputContour > points, Shape > Contour > points'); if (!pointsNode) pointsNode = layerNode.querySelector('OutputRect, ShapeObject > Rect'); if (pointsNode) pointsNode.querySelectorAll('v').forEach(v => { const x = parseFloat(v.getAttribute('x')), y = parseFloat(v.getAttribute('y')); if (!isNaN(x) && !isNaN(y)) layer.points.push({ x, y }) }); if (layer.type === "Slice" && layer.points.length !== 4) { const rectNode = layerNode.querySelector('OutputRect'); if(rectNode) { const vs = rectNode.querySelectorAll('v'); if(vs.length === 4) layer.points = Array.from(vs).map(v => ({ x: parseFloat(v.getAttribute('x')), y: parseFloat(v.getAttribute('y')) })) } } screen.layers.push(layer) }); project.screens.push(screen) }); return project }
+const buildParamRange = (name, T, def, value, min, max) => `<ParamRange name="${name}" T="${T}" default="${def}" value="${value}"><PhaseSourceStatic name="PhaseSourceStatic"/><BehaviourDouble name="BehaviourDouble"/><ValueRange name="defaultRange" min="${min}" max="${max}"/><ValueRange name="minMax" min="${min}" max="${max}"/><ValueRange name="startStop" min="${min}" max="${max}"/></ParamRange>`;
+const buildLayerCommons = (layer) => `<Params name="Common"><Param name="Name" T="STRING" default="Layer" value="${layer.name}"/><Param name="Enabled" T="BOOL" default="1" value="${layer.enabled ? '1' : '0'}"/></Params>`;
+const buildPolygonXml = (layer) => { const pointsXml = layer.points.map(p => `<v x="${p.x.toFixed(4)}" y="${p.y.toFixed(4)}"/>`).join('\n'), segments = 'L'.repeat(layer.points.length), bbox = getBoundingBox([layer]); return `<Polygon uniqueId="${layer.uniqueId}" IsVirgin="0">${buildLayerCommons(layer)}<Params name="Input"><ParamChoice name="Input Source" default="0:1" value="0:1" storeChoices="0"/><Param name="Input Opacity" T="BOOL" default="1" value="1"/><Param name="Input Bypass/Solo" T="BOOL" default="1" value="1"/></Params><Params name="Output"><Param name="Flip" T="UINT8" default="0" value="0"/>${buildParamRange("Brightness","DOUBLE",0,0,-1,1)}${buildParamRange("Contrast","DOUBLE",0,0,-1,1)}${buildParamRange("Red","DOUBLE",0,0,-1,1)}${buildParamRange("Green","DOUBLE",0,0,-1,1)}${buildParamRange("Blue","DOUBLE",0,0,-1,1)}<Param name="Is Key" T="BOOL" default="0" value="0"/><Param name="Black BG" T="BOOL" default="0" value="0"/></Params><InputRect orientation="0"><v x="${bbox.minX.toFixed(4)}" y="${bbox.minY.toFixed(4)}"/><v x="${bbox.maxX.toFixed(4)}" y="${bbox.minY.toFixed(4)}"/><v x="${bbox.maxX.toFixed(4)}" y="${bbox.maxY.toFixed(4)}"/><v x="${bbox.minX.toFixed(4)}" y="${bbox.maxY.toFixed(4)}"/></InputRect><OutputRect orientation="0"><v x="${bbox.minX.toFixed(4)}" y="${bbox.minY.toFixed(4)}"/><v x="${bbox.maxX.toFixed(4)}" y="${bbox.minY.toFixed(4)}"/><v x="${bbox.maxX.toFixed(4)}" y="${bbox.maxY.toFixed(4)}"/><v x="${bbox.minX.toFixed(4)}" y="${bbox.maxY.toFixed(4)}"/></OutputRect><InputContour closed="1"><points>${pointsXml}</points><segments>${segments}</segments></InputContour><OutputContour closed="1"><points>${pointsXml}</points><segments>${segments}</segments></OutputContour></Polygon>` }
+const buildMaskXml = (layer) => { const pointsXml = layer.points.map(p => `<v x="${p.x.toFixed(4)}" y="${p.y.toFixed(4)}"/>`).join('\n'), segments = 'L'.repeat(layer.points.length), bbox = getBoundingBox([layer]); return `<Mask uniqueId="${layer.uniqueId}">${buildLayerCommons(layer)}<Params name="Output"><Param name="Invert" T="BOOL" default="0" value="0"/></Params><ShapeObject><Params name="Shape"><ParamChoice name="Point Mode" default="PM_LINEAR" value="PM_LINEAR" storeChoices="0"/></Params><Rect orientation="0"><v x="${bbox.minX.toFixed(4)}" y="${bbox.minY.toFixed(4)}"/><v x="${bbox.maxX.toFixed(4)}" y="${bbox.minY.toFixed(4)}"/><v x="${bbox.maxX.toFixed(4)}" y="${bbox.maxY.toFixed(4)}"/><v x="${bbox.minX.toFixed(4)}" y="${bbox.maxY.toFixed(4)}"/></Rect><Shape><Contour closed="1"><points>${pointsXml}</points><segments>${segments}</segments></Contour></Shape></ShapeObject></Mask>` }
+const buildSliceXml = (layer) => { const pointsXml = layer.points.map(p => `<v x="${p.x.toFixed(4)}" y="${p.y.toFixed(4)}"/>`).join('\n'), bbox = getBoundingBox([layer]); return `<Slice uniqueId="${layer.uniqueId}">${buildLayerCommons(layer)}<InputRect orientation="0"><v x="${bbox.minX.toFixed(4)}" y="${bbox.minY.toFixed(4)}"/><v x="${bbox.maxX.toFixed(4)}" y="${bbox.minY.toFixed(4)}"/><v x="${bbox.maxX.toFixed(4)}" y="${bbox.maxY.toFixed(4)}"/><v x="${bbox.minX.toFixed(4)}" y="${bbox.maxY.toFixed(4)}"/></InputRect><OutputRect orientation="0">${pointsXml}</OutputRect><Warper><BezierWarper controlWidth="2" controlHeight="2"><vertices><v x="0" y="0"/><v x="1" y="0"/><v x="0" y="1"/><v x="1" y="1"/></vertices></BezierWarper></Warper></Slice>` }
+function buildXml() { if (!projectData) return ""; let xml = `<?xml version="1.0" encoding="utf-8"?><XmlState name="CustomOutput"><versionInfo name="Resolume Arena" majorVersion="7" minorVersion="22" microVersion="9" revision="47596"/><ScreenSetup name="ScreenSetup"><Params name="ScreenSetupParams"/><CurrentCompositionTextureSize width="${projectData.compositionWidth}" height="${projectData.compositionHeight}"/><screens>\n`; projectData.screens.forEach(screen => { xml += `<Screen name="${screen.name}" uniqueId="${screen.uniqueId}"><Params name="Params"><Param name="Name" T="STRING" default="" value="${screen.name}"/><Param name="Enabled" T="BOOL" default="1" value="${screen.enabled ? '1' : '0'}"/></Params><layers>\n`; screen.layers.forEach(layer => { let layerXml = ''; switch(layer.type) { case 'Polygon': layerXml = buildPolygonXml(layer); break; case 'Mask': layerXml = buildMaskXml(layer); break; case 'Slice': layerXml = buildSliceXml(layer); break; } xml += layerXml + '\n'; }); xml += `</layers></Screen>\n`; }); xml += `</screens></ScreenSetup></XmlState>`; const dom = new DOMParser().parseFromString(xml, "application/xml"); const xslt = new DOMParser().parseFromString(`<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" indent="yes"/><xsl:strip-space elements="*"/><xsl:template match="node()|@*"><xsl:copy><xsl:apply-templates select="node()|@*"/></xsl:copy></xsl:template></xsl:stylesheet>`, 'application/xml'); const processor = new XSLTProcessor(); processor.importStylesheet(xslt); return new XMLSerializer().serializeToString(processor.transformToDocument(dom)); }
+
+
+// --- RENDERING ---
+
+function renderAll() {
+    if (!projectData) return;
+    renderHierarchy();
+    renderCanvas();
+    renderInspector();
+    updateCanvasSizeLabel();
+}
+
+function renderHierarchy() {
+    const tree = document.getElementById('hierarchy-tree');
+    if (!projectData || projectData.screens.length === 0) {
+        tree.innerHTML = `<p class="text-gray-400">${translations[currentLang].hierarchyHelp}</p>`; return;
+    }
+    let html = '<ul>';
+    projectData.screens.forEach(screen => {
+        const isSelected = appState.selectedItemIds.includes(screen.uniqueId);
+        const isCollapsed = screen.collapsed;
+        html += `<li data-id="${screen.uniqueId}" class="${isSelected ? 'selected' : ''}"><div class="item-content"><i class="screen-toggle-icon fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'}" data-id="${screen.uniqueId}"></i><i class="fas fa-desktop"></i><span>${screen.name}</span><div class="item-controls"><i class="visibility-toggle fas ${screen.enabled ? 'fa-eye' : 'fa-eye-slash'}" data-id="${screen.uniqueId}"></i><i class="delete-item-btn fas fa-trash-alt" data-id="${screen.uniqueId}"></i></div></div><ul style="${isCollapsed ? 'display: none;' : ''}">`;
+        screen.layers.forEach(layer => {
+            let icon = 'fa-square';
+            if (layer.type === 'Polygon') icon = 'fa-draw-polygon';
+            if (layer.type === 'Mask') icon = 'fa-mask';
+            if (layer.type === 'Slice') icon = 'fa-clone';
+            const isLayerSelected = appState.selectedItemIds.includes(layer.uniqueId);
+            html += `<li data-id="${layer.uniqueId}" class="${isLayerSelected ? 'selected' : ''}"><div class="item-content"><i class="fas ${icon}"></i><span>${layer.name}</span><div class="item-controls"><i class="visibility-toggle fas ${layer.enabled ? 'fa-eye' : 'fa-eye-slash'}" data-id="${layer.uniqueId}"></i><i class="delete-item-btn fas fa-trash-alt" data-id="${layer.uniqueId}"></i></div></div></li>`;
+        });
+        html += '</ul></li>';
+    });
+    tree.innerHTML = html + '</ul>';
+    tree.querySelectorAll('.item-content').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); handleSelection(el.parentElement.dataset.id, e.ctrlKey || e.metaKey, e.shiftKey); }));
+    tree.querySelectorAll('.screen-toggle-icon').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); toggleScreenCollapse(el.dataset.id); }));
+    tree.querySelectorAll('.visibility-toggle').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); toggleVisibility(el.dataset.id); }));
+    tree.querySelectorAll('.delete-item-btn').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); deleteItems([el.dataset.id]); }));
+}
+
+function renderCanvas(canvasId = 'main-canvas', viewTransform = appState.mainViewTransform) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const { width, height } = canvas;
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, width, height);
+    if (!projectData || !projectData.compositionWidth) return;
+    
+    ctx.save();
+    ctx.translate(viewTransform.offsetX, viewTransform.offsetY);
+    ctx.scale(viewTransform.scale, viewTransform.scale);
+    
+    if (appState.guideImage.element && appState.guideImage.element.complete) {
+        const img = appState.guideImage.element;
+        const compAspect = projectData.compositionWidth / projectData.compositionHeight;
+        const imgAspect = img.width / img.height;
+        let w, h;
+        if (compAspect > imgAspect) { h = projectData.compositionHeight; w = h * imgAspect; } 
+        else { w = projectData.compositionWidth; h = w / imgAspect; }
+        const x = (projectData.compositionWidth - w) / 2;
+        const y = (projectData.compositionHeight - h) / 2;
+        ctx.globalAlpha = 0.5;
+        ctx.drawImage(img, x, y, w, h);
+        ctx.globalAlpha = 1.0;
+    }
+    
+    ctx.strokeStyle = '#444'; ctx.lineWidth = 1 / viewTransform.scale;
+    ctx.strokeRect(0, 0, projectData.compositionWidth, projectData.compositionHeight);
+    projectData.screens.forEach(screen => {
+        if (!screen.enabled) return;
+        screen.layers.forEach(layer => {
+            if (!layer.enabled || !layer.points || layer.points.length === 0) return;
+            ctx.beginPath();
+            layer.points.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+            const isSelected = appState.selectedItemIds.includes(layer.uniqueId);
+            ctx.closePath();
+            ctx.strokeStyle = isSelected ? 'yellow' : 'cyan';
+            ctx.lineWidth = (isSelected ? 2 : 1) / viewTransform.scale;
+            ctx.stroke();
+            if (isSelected) {
+                ctx.fillStyle = 'red';
+                const pointRadius = 6 / viewTransform.scale;
+                layer.points.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, pointRadius, 0, 2 * Math.PI); ctx.fill(); });
+            }
+        });
+    });
+    
+    if (appState.creationMode && appState.creationMode.points.length > 0) {
+        const { points } = appState.creationMode;
+        ctx.strokeStyle = 'lime';
+        ctx.lineWidth = 1 / viewTransform.scale;
+        ctx.beginPath();
+        points.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+        ctx.stroke();
+        const {x, y} = canvasToWorldCoords(appState.dragState.currentMouseX, appState.dragState.currentMouseY, viewTransform);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.fillStyle = 'lime';
+        const pointRadius = 5 / viewTransform.scale;
+        ctx.beginPath(); ctx.arc(points[0].x, points[0].y, pointRadius, 0, 2*Math.PI); ctx.fill();
+    }
+    
+    if (appState.hoverState && appState.hoverState.type === 'edge') {
+        ctx.fillStyle = 'magenta';
+        const pointRadius = 5 / viewTransform.scale;
+        const { x, y } = appState.hoverState.position;
+        ctx.beginPath(); ctx.arc(x, y, pointRadius, 0, 2 * Math.PI); ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+function renderInspector() {
+    const inspectorContent = document.getElementById('inspector-content');
+    const t = translations[currentLang];
+    const selectedIds = appState.selectedItemIds;
+    if (selectedIds.length === 0) { inspectorContent.innerHTML = `<p class="text-gray-400">${t.inspectorHelp}</p>`; return; }
+    if (selectedIds.length === 1) {
+        const item = findItemById(selectedIds[0]);
+        let html = `<div class="prop-grid"><label>${t.propName}</label><input type="text" id="prop-name" value="${item.name}"><label>${t.propId}</label><input type="text" value="${item.uniqueId}" readonly class="bg-gray-700"><label>${t.propType}</label><input type="text" value="${item.type || 'Screen'}" readonly class="bg-gray-700"></div>`;
+        if (item.points) {
+           html += `<h3 class="font-semibold mt-4 mb-2">${t.propPoints}</h3><div class="prop-grid">`;
+           item.points.forEach((p, i) => { html += `<label>P ${i+1}</label><div class="grid grid-cols-2 gap-2"><input type="number" step="0.1" class="point-coord" data-index="${i}" data-axis="x" value="${p.x.toFixed(2)}"><input type="number" step="0.1" class="point-coord" data-index="${i}" data-axis="y" value="${p.y.toFixed(2)}"></div>`; });
+           html += '</div>';
+        }
+        inspectorContent.innerHTML = html;
+        document.getElementById('prop-name').addEventListener('change', e => { item.name = e.target.value; renderHierarchy(); saveState(); });
+        inspectorContent.querySelectorAll('.point-coord').forEach(input => input.addEventListener('change', e => {
+            const i = parseInt(e.target.dataset.index), axis = e.target.dataset.axis, val = parseFloat(e.target.value);
+            if (!isNaN(val)) { item.points[i][axis] = val; renderCanvas(); saveState(); }
+        }));
+    } else {
+        inspectorContent.innerHTML = `<div><h3 class="font-bold">${selectedIds.length} éléments</h3></div><div class="prop-grid mt-4"><label for="batch-rename">Renommer</label><input type="text" id="batch-rename" placeholder="Nom de base..."><label></label><div><input type="checkbox" id="batch-rename-suffix" class="mr-2"><label for="batch-rename-suffix">Suffixe numérique</label></div></div>`;
+        document.getElementById('batch-rename').addEventListener('change', handleBatchRename);
+    }
+}
+function updateCanvasSizeLabel() { if(projectData) document.getElementById('canvas-size-label').textContent = `${projectData.compositionWidth}x${projectData.compositionHeight}`; }
+
+// --- CONTROLLER LOGIC & EVENT HANDLERS ---
+function findItemById(id) {
+    if (!projectData || !id) return null;
+    for (const s of projectData.screens) { if (s.uniqueId === id) return s; for (const l of s.layers) if (l.uniqueId === id) return l; } return null;
+}
+function getBoundingBox(layers) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    layers.forEach(layer => {
+        if (!layer.points || layer.points.length === 0) return;
+        layer.points.forEach(p => { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); });
+    });
+    if (minX === Infinity) return { minX:0, minY:0, maxX:0, maxY:0 };
+    return { minX, minY, maxX, maxY };
+}
+function getHierarchyItemIds() {
+    const ids = [];
+    if (!projectData) return ids;
+    projectData.screens.forEach(screen => {
+        ids.push(screen.uniqueId);
+        if (!screen.collapsed) {
+           screen.layers.forEach(layer => ids.push(layer.uniqueId));
+        }
+    });
+    return ids;
+}
+function isItemVisible(itemId) {
+    const item = findItemById(itemId);
+    if (!item || !item.enabled) return false;
+    if (item.type !== 'Screen') {
+        const parentScreen = projectData.screens.find(s => s.layers.some(l => l.uniqueId === itemId));
+        if (parentScreen && (!parentScreen.enabled || parentScreen.collapsed)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function setupEventListeners() {
+    // Top Bar
+    document.getElementById('new-project-btn').addEventListener('click', () => document.getElementById('new-project-modal').classList.remove('hidden'));
+    document.getElementById('open-xml-btn').addEventListener('click', () => document.getElementById('xml-file-input').click());
+    document.getElementById('save-xml-btn').addEventListener('click', handleXmlFileSave);
+    document.getElementById('add-guide-btn').addEventListener('click', () => document.getElementById('guide-file-input').click());
+    document.getElementById('import-image-btn').addEventListener('click', () => document.getElementById('image-file-input').click());
+    
+    // SVG LISTENERS
+    document.getElementById('import-svg-btn').addEventListener('click', () => document.getElementById('svg-file-input').click());
+    document.getElementById('svg-file-input').addEventListener('change', handleSvgFileImport);
+
+    document.getElementById('add-screen-btn').addEventListener('click', createNewScreen);
+    document.getElementById('add-slice-btn').addEventListener('click', createNewSlice);
+    document.getElementById('add-poly-btn').addEventListener('click', () => enterCreationMode('Polygon'));
+    document.getElementById('add-mask-btn').addEventListener('click', () => enterCreationMode('Mask'));
+    document.getElementById('ai-layout-btn').addEventListener('click', () => { if (!projectData) { alert(translations[currentLang].alertNoProject); return; } document.getElementById('ai-layout-modal').classList.remove('hidden'); });
+    document.getElementById('language-switcher').addEventListener('change', (e) => setLanguage(e.target.value));
+
+    // File Inputs
+    document.getElementById('xml-file-input').addEventListener('change', handleXmlFileOpen);
+    document.getElementById('guide-file-input').addEventListener('change', handleGuideImageLoad);
+    document.getElementById('image-file-input').addEventListener('change', handleImageFileImport);
+
+    // Modals
+    document.getElementById('cancel-new-project-btn').addEventListener('click', () => document.getElementById('new-project-modal').classList.add('hidden'));
+    document.getElementById('confirm-new-project-btn').addEventListener('click', handleNewProject);
+    document.getElementById('cancel-ai-layout-btn').addEventListener('click', () => document.getElementById('ai-layout-modal').classList.add('hidden'));
+    document.getElementById('confirm-ai-layout-btn').addEventListener('click', handleAiLayoutGeneration);
+    
+
+    // Canvas Setup
+    const mainContainer = document.getElementById('canvas-container');
+    const previewContainer = document.getElementById('preview-canvas-container');
+    
+    const resizeObserver = new ResizeObserver(entries => {
+        for (const entry of entries) {
+            const canvas = entry.target.querySelector('canvas');
+            if (canvas) {
+                const { width, height } = entry.contentRect;
+                canvas.width = width; canvas.height = height;
+                if (canvas.id === 'main-canvas') renderCanvas();
+                else if (canvas.id === 'preview-canvas') updatePreviewCanvas();
+            }
+        }
+    });
+    resizeObserver.observe(mainContainer);
+    resizeObserver.observe(previewContainer);
+
+    setupCanvasPanAndZoom(mainContainer, appState.mainViewTransform, renderCanvas, handleCanvasMouseDown, handleCanvasMouseMove, handleCanvasMouseUp, handleCanvasDoubleClick);
+    setupCanvasPanAndZoom(previewContainer, appState.previewViewTransform, renderPreviewWithTransform);
+    
+    // Global Keydowns
+    document.addEventListener('keydown', (e) => {
+        const targetTag = e.target.tagName.toLowerCase();
+        if (targetTag === 'input' || targetTag === 'textarea') return;
+        if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteItems(appState.selectedItemIds); }
+        if (e.key === 'Escape') { if(appState.creationMode) cancelCreationMode(); }
+        if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+        if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+        if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); enterCreationMode('Polygon'); }
+        if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); enterCreationMode('Mask'); }
+    });
+}
+
+function handleNewProject() {
+    const width = parseInt(document.getElementById('comp-width').value);
+    const height = parseInt(document.getElementById('comp-height').value);
+    if(isNaN(width) || isNaN(height) || width <= 0 || height <= 0) { alert("Largeur et hauteur invalides."); return; }
+    projectData = { compositionWidth: width, compositionHeight: height, screens: [] };
+    createNewScreen();
+    document.getElementById('new-project-modal').classList.add('hidden');
+    appState.selectedItemIds = [projectData.screens[0].uniqueId];
+    saveState();
+    renderAll();
+}
+function handleXmlFileOpen(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try { 
+                projectData = parseXml(e.target.result); 
+                appState.selectedItemIds = []; 
+                saveState();
+                renderAll(); 
+            } 
+            catch (err) { console.error("Error parsing XML:", err); alert("Fichier XML invalide."); }
+        };
+        reader.readAsText(file);
+    }
+}
+function handleXmlFileSave() { if (!projectData) { alert(translations[currentLang].alertNoProjectSave); return; } const xmlString = buildXml(); const blob = new Blob([xmlString], { type: 'application/xml' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'advanced_output_fixed.xml'; a.click(); URL.revokeObjectURL(a.href); }
+function handleGuideImageLoad(e) { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (re) => { appState.guideImage.src = re.target.result; appState.guideImage.element = new Image(); appState.guideImage.element.onload = () => renderCanvas(); appState.guideImage.element.src = re.target.result; }; reader.readAsDataURL(file); } }
+function createNewScreen() { if (!projectData) { alert(translations[currentLang].alertNoProject); return; } const screen = { type: 'Screen', uniqueId: generateUniqueId(), name: `${translations[currentLang].nameScreen} ${projectData.screens.length + 1}`, enabled: true, collapsed: false, layers: [] }; projectData.screens.push(screen); appState.selectedItemIds = [screen.uniqueId]; saveState(); renderAll(); }
+function createNewSlice() {
+    if (!projectData) { alert(translations[currentLang].alertNoProject); return; }
+    let targetScreen = getActiveScreen();
+    if (!targetScreen) { alert(translations[currentLang].alertNoScreen); return; }
+    const { compositionWidth: w, compositionHeight: h } = projectData;
+    const layer = { type: 'Slice', points: [{x:0, y:0}, {x:w, y:0}, {x:w, y:h}, {x:0, y:h}], uniqueId: generateUniqueId(), name: `${translations[currentLang].nameSlice} ${targetScreen.layers.length + 1}`, enabled: true };
+    targetScreen.layers.push(layer);
+    appState.selectedItemIds = [layer.uniqueId];
+    appState.lastClickedItemId = layer.uniqueId;
+    saveState();
+    renderAll();
+}
+function enterCreationMode(type) {
+    if (!projectData) { alert(translations[currentLang].alertNoProject); return; }
+    cancelCreationMode();
+    appState.creationMode = { type: type, points: [] };
+    document.getElementById('add-poly-btn').classList.toggle('active', type === 'Polygon');
+    document.getElementById('add-mask-btn').classList.toggle('active', type === 'Mask');
+    document.getElementById('canvas-container').style.cursor = 'crosshair';
+}
+function cancelCreationMode() {
+    appState.creationMode = null;
+    ['add-poly-btn', 'add-mask-btn'].forEach(id => document.getElementById(id).classList.remove('active'));
+    document.getElementById('canvas-container').style.cursor = 'default';
+    renderCanvas();
+}
+function finalizeCreation() {
+    const { type, points } = appState.creationMode;
+    if (points.length < 3) { cancelCreationMode(); return; }
+    let targetScreen = getActiveScreen();
+    if (!targetScreen) { alert(translations[currentLang].alertNoScreen); cancelCreationMode(); return; }
+    const nameType = type === 'Polygon' ? translations[currentLang].namePolygon : translations[currentLang].nameMask;
+    const layer = { type, points, uniqueId: generateUniqueId(), name: `${nameType} ${targetScreen.layers.length + 1}`, enabled: true };
+    targetScreen.layers.push(layer);
+    appState.selectedItemIds = [layer.uniqueId];
+    cancelCreationMode();
+    saveState();
+    renderAll();
+}
+
+function handleSelection(id, isMultiSelect, isShiftSelect) {
+    if (isShiftSelect && appState.lastClickedItemId) {
+        const allItemIds = getHierarchyItemIds();
+        const lastIndex = allItemIds.indexOf(appState.lastClickedItemId);
+        const currentIndex = allItemIds.indexOf(id);
+        if (lastIndex !== -1 && currentIndex !== -1) {
+            const start = Math.min(lastIndex, currentIndex);
+            const end = Math.max(lastIndex, currentIndex);
+            const itemsToSelect = allItemIds.slice(start, end + 1);
+            const newSelection = new Set(isMultiSelect ? appState.selectedItemIds : []);
+            itemsToSelect.forEach(itemId => newSelection.add(itemId));
+            appState.selectedItemIds = Array.from(newSelection);
+        }
+    } else if (isMultiSelect) {
+        const index = appState.selectedItemIds.indexOf(id);
+        if (index > -1) appState.selectedItemIds.splice(index, 1);
+        else appState.selectedItemIds.push(id);
+        appState.lastClickedItemId = id;
+    } else {
+        appState.selectedItemIds = [id];
+        appState.lastClickedItemId = id;
+    }
+    renderAll();
+}
+function toggleVisibility(id) { const item = findItemById(id); if(item) { item.enabled = !item.enabled; saveState(); renderAll(); } }
+function toggleScreenCollapse(id) { const screen = projectData.screens.find(s => s.uniqueId === id); if(screen) { screen.collapsed = !screen.collapsed; renderHierarchy(); }}
+function deleteItems(ids) {
+    if (ids.length === 0) return;
+    const visibleItemsToDelete = ids.filter(id => isItemVisible(id));
+    const hiddenItemCount = ids.length - visibleItemsToDelete.length;
+    if(hiddenItemCount > 0) {
+        alert(translations[currentLang].alertHiddenDelete(hiddenItemCount));
+    }
+
+    if(visibleItemsToDelete.length > 0) {
+        projectData.screens = projectData.screens.filter(s => !visibleItemsToDelete.includes(s.uniqueId));
+        projectData.screens.forEach(s => { s.layers = s.layers.filter(l => !visibleItemsToDelete.includes(l.uniqueId)); });
+        appState.selectedItemIds = appState.selectedItemIds.filter(id => !visibleItemsToDelete.includes(id));
+        saveState();
+        renderAll();
+    }
+}
+
+function handleBatchRename(event) {
+    const baseName = event.target.value;
+    const useSuffix = document.getElementById('batch-rename-suffix').checked;
+    if (!baseName) return;
+    appState.selectedItemIds.forEach((id, index) => {
+        const item = findItemById(id);
+        if (item) item.name = useSuffix ? `${baseName} ${index + 1}` : baseName;
+    });
+    saveState();
+    renderHierarchy();
+}
+
+// --- CANVAS INTERACTIVITY ---
+function setupCanvasPanAndZoom(container, viewTransform, renderFn, mouseDownFn, mouseMoveFn, mouseUpFn, doubleClickFn) {
+    let isPanning = false; let lastPos = { x: 0, y: 0 };
+    container.addEventListener('mousedown', (e) => {
+        if (e.button === 1 || (e.button === 0 && e.altKey)) {
+            isPanning = true; lastPos = { x: e.clientX, y: e.clientY };
+            container.style.cursor = 'grabbing'; e.preventDefault();
+        } else if (e.button === 0 && mouseDownFn) mouseDownFn(e);
+    });
+    container.addEventListener('mousemove', (e) => {
+        if (isPanning) {
+            const dx = e.clientX - lastPos.x; const dy = e.clientY - lastPos.y;
+            viewTransform.offsetX += dx; viewTransform.offsetY += dy;
+            lastPos = { x: e.clientX, y: e.clientY }; renderFn();
+        } else if (mouseMoveFn) mouseMoveFn(e);
+    });
+    window.addEventListener('mouseup', (e) => {
+        if (isPanning) { isPanning = false; container.style.cursor = 'default'; }
+        if (mouseUpFn) mouseUpFn(e);
+    });
+    container.addEventListener('wheel', (e) => {
+        e.preventDefault(); const rect = container.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
+        const scaleAmount = e.deltaY > 0 ? 1 / 1.1 : 1.1;
+        const worldX = (mouseX - viewTransform.offsetX) / viewTransform.scale;
+        const worldY = (mouseY - viewTransform.offsetY) / viewTransform.scale;
+        viewTransform.scale *= scaleAmount;
+        viewTransform.offsetX = mouseX - worldX * viewTransform.scale;
+        viewTransform.offsetY = mouseY - worldY * viewTransform.scale;
+        renderFn();
+    });
+    if (doubleClickFn) {
+        container.addEventListener('dblclick', doubleClickFn);
+    }
+}
+function canvasToWorldCoords(x, y, v) { return { x: (x - v.offsetX) / v.scale, y: (y - v.offsetY) / v.scale }; }
+function getCanvasCoords(e, c) { const r = c.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top, }; }
+
+function handleCanvasMouseDown(event) {
+    if (!projectData) return;
+    const { x: mouseX, y: mouseY } = getCanvasCoords(event, document.getElementById('main-canvas'));
+    const {x: worldX, y: worldY} = canvasToWorldCoords(mouseX, mouseY, appState.mainViewTransform);
+
+    if (appState.creationMode) {
+        appState.creationMode.points.push({x: worldX, y: worldY});
+        if (appState.creationMode.points.length > 1 && pointDistance(appState.creationMode.points[0], {x:worldX, y:worldY}) * appState.mainViewTransform.scale < 15) {
+            appState.creationMode.points.pop();
+            finalizeCreation();
+        } else { renderCanvas(); }
+        return;
+    }
+
+    let dragActionFound = false;
+    for (const id of appState.selectedItemIds) {
+        if (!isItemVisible(id)) continue;
+        const item = findItemById(id);
+        if (item && item.points) {
+            for (let i = 0; i < item.points.length; i++) {
+                if (pointDistance({x: worldX, y: worldY}, item.points[i]) * appState.mainViewTransform.scale < 12) {
+                    appState.dragState = { isDragging: true, draggedItem: item, draggedPointIndex: i };
+                    dragActionFound = true;
+                    break;
+                }
+            }
+        }
+        if (dragActionFound) break;
+    }
+    
+    if (dragActionFound) return;
+
+    let clickedItem = null;
+    for (const screen of [...projectData.screens].reverse()) { 
+        if (!screen.enabled) continue;
+        for (const layer of [...screen.layers].reverse()) {
+            if (layer.enabled && layer.points && isPointInPolygon({x: worldX, y: worldY}, layer.points)) { clickedItem = layer; break; }
+        } if (clickedItem) break;
+    }
+    
+    if (clickedItem) {
+        if (!appState.selectedItemIds.includes(clickedItem.uniqueId)) {
+            handleSelection(clickedItem.uniqueId, event.ctrlKey || event.metaKey, event.shiftKey);
+        }
+        appState.dragState = { isDragging: true, draggedPointIndex: -1, startX: worldX, startY: worldY };
+        dragActionFound = true;
+    }
+
+    if (!dragActionFound) {
+        if (!event.ctrlKey && !event.metaKey && !event.shiftKey) appState.selectedItemIds = [];
+        appState.dragState = { isSelecting: true, startX: mouseX, startY: mouseY };
+        const selRect = document.getElementById('selection-rect');
+        selRect.style.left = `${mouseX}px`; selRect.style.top = `${mouseY}px`;
+        selRect.style.width = '0px'; selRect.style.height = '0px';
+        selRect.classList.remove('hidden');
+    }
+    renderAll();
+}
+
+function handleCanvasDoubleClick(event) {
+    const { x: mouseX, y: mouseY } = getCanvasCoords(event, document.getElementById('main-canvas'));
+    const {x: worldX, y: worldY} = canvasToWorldCoords(mouseX, mouseY, appState.mainViewTransform);
+
+    for (const id of appState.selectedItemIds) {
+        if (!isItemVisible(id)) continue;
+        const item = findItemById(id);
+        if (item && item.points && item.points.length > 3) {
+            for (let i = item.points.length - 1; i >= 0; i--) {
+                if (pointDistance({x: worldX, y: worldY}, item.points[i]) * appState.mainViewTransform.scale < 12) {
+                    item.points.splice(i, 1);
+                    saveState();
+                    renderAll();
+                    return; 
+                }
+            }
+        }
+    }
+    
+    if (appState.hoverState && appState.hoverState.type === 'edge') {
+        const layer = findItemById(appState.hoverState.layerId);
+        if (layer && isItemVisible(layer.uniqueId)) {
+            layer.points.splice(appState.hoverState.edgeIndex + 1, 0, appState.hoverState.position);
+            appState.hoverState = null;
+            saveState();
+            renderAll();
+        }
+    }
+}
+
+function handleCanvasMouseMove(event) {
+    const canvas = document.getElementById('main-canvas');
+    const { x: mouseX, y: mouseY } = getCanvasCoords(event, canvas);
+    appState.dragState.currentMouseX = mouseX;
+    appState.dragState.currentMouseY = mouseY;
+    if (appState.creationMode) { renderCanvas(); canvas.style.cursor = 'crosshair'; return; }
+    
+    const { isDragging, isSelecting } = appState.dragState;
+    if (!isDragging && !isSelecting) {
+        updateHoverState(event);
+        return;
+    }
+
+    const { x: worldX, y: worldY } = canvasToWorldCoords(mouseX, mouseY, appState.mainViewTransform);
+    if (isNaN(worldX) || isNaN(worldY)) return;
+
+    if (isDragging) {
+        const { draggedItem, draggedPointIndex } = appState.dragState;
+        if (draggedPointIndex > -1) {
+            if(draggedItem) draggedItem.points[draggedPointIndex] = { x: worldX, y: worldY };
+        } else {
+            const dx = worldX - appState.dragState.startX, dy = worldY - appState.dragState.startY;
+            appState.selectedItemIds.forEach(id => {
+                if (!isItemVisible(id)) return;
+                const item = findItemById(id);
+                if (item && item.points) item.points.forEach(p => { p.x += dx; p.y += dy; });
+            });
+            appState.dragState.startX = worldX; appState.dragState.startY = worldY;
+        }
+        renderCanvas(); renderInspector();
+    } else if (isSelecting) {
+        const selRect = document.getElementById('selection-rect');
+        const { startX, startY } = appState.dragState;
+        const left = Math.min(startX, mouseX), top = Math.min(startY, mouseY);
+        const width = Math.abs(startX - mouseX), height = Math.abs(startY - mouseY);
+        selRect.style.left = `${left}px`; selRect.style.top = `${top}px`;
+        selRect.style.width = `${width}px`; selRect.style.height = `${height}px`;
+    }
+}
+function handleCanvasMouseUp(event) {
+    if (appState.dragState.isDragging) saveState();
+    if(appState.dragState.isSelecting) {
+        const selRectEl = document.getElementById('selection-rect');
+        const rect = selRectEl.getBoundingClientRect(), canvasRect = document.getElementById('main-canvas').getBoundingClientRect();
+        const selStart = canvasToWorldCoords(rect.left - canvasRect.left, rect.top - canvasRect.top, appState.mainViewTransform);
+        const selEnd = canvasToWorldCoords(rect.right - canvasRect.left, rect.bottom - canvasRect.top, appState.mainViewTransform);
+        const newlySelected = [];
+        projectData.screens.forEach(s => {
+            if (!s.enabled || s.collapsed) return;
+            s.layers.forEach(l => {
+                if (l.enabled && l.points && l.points.length > 0) {
+                    const bbox = getBoundingBox([l]);
+                    if (bbox.maxX > selStart.x && bbox.minX < selEnd.x && bbox.maxY > selStart.y && bbox.minY < selEnd.y) {
+                        if (!appState.selectedItemIds.includes(l.uniqueId)) newlySelected.push(l.uniqueId);
+                    }
+                }
+            });
+        });
+        appState.selectedItemIds.push(...newlySelected);
+        selRectEl.classList.add('hidden'); renderAll();
+    }
+    appState.dragState = {};
+}
+function isPointInPolygon(point, polygonPoints) { let isInside = false; for (let i = 0, j = polygonPoints.length - 1; i < polygonPoints.length; j = i++) { const xi = polygonPoints[i].x, yi = polygonPoints[i].y, xj = polygonPoints[j].x, yj = polygonPoints[j].y; const intersect = ((yi > point.y) !== (yj > point.y)) && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi); if (intersect) isInside = !isInside; } return isInside; }
+function updateHoverState(event) {
+    const canvas = document.getElementById('main-canvas');
+    const { x: mouseX, y: mouseY } = getCanvasCoords(event, canvas);
+    const {x: worldX, y: worldY} = canvasToWorldCoords(mouseX, mouseY, appState.mainViewTransform);
+    let newHoverState = null, cursor = 'default';
+
+    for(const id of appState.selectedItemIds) {
+        if (!isItemVisible(id)) continue;
+        const item = findItemById(id);
+        if(item && item.points) {
+            for(const p of item.points) if (pointDistance({x:worldX, y:worldY}, p) * appState.mainViewTransform.scale < 12) { cursor = 'grab'; newHoverState = { type: 'point' }; break; }
+            if(newHoverState) break;
+            for (let i = 0; i < item.points.length; i++) {
+                const p1 = item.points[i], p2 = item.points[(i + 1) % item.points.length];
+                const { dist, closestPoint } = distToSegment( {x:worldX, y:worldY}, p1, p2 );
+                if (dist * appState.mainViewTransform.scale < 5) { cursor = 'copy'; newHoverState = { type: 'edge', layerId: id, edgeIndex: i, position: closestPoint }; break; }
+            }
+        } if(newHoverState) break;
+    }
+    canvas.style.cursor = cursor;
+    if (JSON.stringify(appState.hoverState) !== JSON.stringify(newHoverState)) { appState.hoverState = newHoverState; renderCanvas(); }
+}
+function distToSegment(p, v, w) { const l2 = pointDistance(v,w)**2; if (l2 == 0) return { dist: pointDistance(p, v), closestPoint: v }; let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2; t = Math.max(0, Math.min(1, t)); const closestPoint = { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) }; return { dist: pointDistance(p, closestPoint), closestPoint }; }
+
+// --- UNDO/REDO ---
+function saveState() {
+    if (appState.historyIndex < appState.history.length - 1) {
+        appState.history = appState.history.slice(0, appState.historyIndex + 1);
+    }
+    appState.history.push(JSON.parse(JSON.stringify(projectData)));
+    appState.historyIndex++;
+}
+
+function undo() {
+    if (appState.historyIndex > 0) {
+        appState.historyIndex--;
+        projectData = JSON.parse(JSON.stringify(appState.history[appState.historyIndex]));
+        renderAll();
+    }
+}
+
+function redo() {
+    if (appState.historyIndex < appState.history.length - 1) {
+        appState.historyIndex++;
+        projectData = JSON.parse(JSON.stringify(appState.history[appState.historyIndex]));
+        renderAll();
+    }
+}
+
+// --- IMAGE & SVG VECTORIZATION (RASTER METHOD) ---
+let vectorizeImageSrc = null;
+
+function getActiveScreen() { if (!projectData || projectData.screens.length === 0) return null; if (appState.selectedItemIds.length > 0) { const lastSelectedId = appState.selectedItemIds[appState.selectedItemIds.length - 1]; const item = findItemById(lastSelectedId); if (item) { if (item.type === 'Screen') return item; return projectData.screens.find(s => s.layers.some(l => l.uniqueId === item.uniqueId)); } } return projectData.screens[0]; }
+
+function handleImageFileImport(event) { const file = event.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (e) => { loadImageForVectorization(e.target.result); }; reader.readAsDataURL(file); } }
+
+// Modification pour traiter le SVG comme une image (DataURL)
+function handleSvgFileImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        // ON UTILISE LA MÊME MÉTHODE QUE POUR LES IMAGES
+        loadImageForVectorization(e.target.result);
+        event.target.value = ''; 
+    };
+    reader.readAsDataURL(file);
+}
+
+function setupVectorizeModal() { 
+    ['threshold', 'min-area', 'simplify', 'max-points'].forEach(id => { 
+        document.getElementById(`${id}-slider`).addEventListener('input', e => { 
+            document.getElementById(`${id}-value`).textContent = e.target.value; 
+            if (id === 'threshold') renderPreviewWithTransform(); 
+        }); 
+    }); 
+    document.getElementById('cancel-vectorize-btn').addEventListener('click', () => document.getElementById('vectorize-modal').classList.add('hidden')); 
+    document.getElementById('confirm-vectorize-btn').addEventListener('click', runVectorization); 
+}
+
+function renderPreviewWithTransform() { 
+    if (!vectorizeImageSrc) return; 
+    const img = new Image(); 
+    img.onload = () => { 
+        const canvas = document.getElementById('preview-canvas'), ctx = canvas.getContext('2d'), { width, height } = canvas; 
+        ctx.fillStyle = 'black'; 
+        ctx.fillRect(0, 0, width, height); 
+        ctx.save(); 
+        ctx.translate(appState.previewViewTransform.offsetX, appState.previewViewTransform.offsetY); 
+        ctx.scale(appState.previewViewTransform.scale, appState.previewViewTransform.scale); 
+        ctx.drawImage(img, 0, 0); 
+        const threshold = parseInt(document.getElementById('threshold-slider').value); 
+        // Note: getImageData ici est juste pour l'aperçu visuel, pas le calcul final
+        // Pour un gros SVG, ça peut être lent, on pourrait optimiser si besoin
+        // mais pour l'instant on laisse tel quel pour l'aperçu.
+        try {
+            const scaledW = img.width; 
+            const scaledH = img.height;
+            // On dessine juste l'image brute pour l'aperçu si elle est très grande
+            // Sinon on applique le seuil visuellement
+            if (scaledW * scaledH < 4000000) { 
+                const imageData = ctx.getImageData(0, 0, img.width, img.height); 
+                const data = imageData.data; 
+                for (let i = 0; i < data.length; i += 4) { 
+                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3, color = avg > threshold ? 255 : 0; 
+                    data[i] = data[i+1] = data[i+2] = color; 
+                } 
+                ctx.putImageData(imageData, 0, 0); 
+            }
+        } catch(e) {}
+        ctx.restore(); 
+    }; 
+    img.src = vectorizeImageSrc; 
+}
+
+function updatePreviewCanvas() { 
+    if (!vectorizeImageSrc) return; 
+    const img = new Image(); 
+    img.onload = () => { 
+        const canvas = document.getElementById('preview-canvas'); 
+        const scaleX = canvas.width/img.width, scaleY = canvas.height/img.height; 
+        appState.previewViewTransform.scale = Math.min(scaleX, scaleY); 
+        appState.previewViewTransform.offsetX = (canvas.width - img.width * appState.previewViewTransform.scale) / 2; 
+        appState.previewViewTransform.offsetY = (canvas.height - img.height * appState.previewViewTransform.scale) / 2; 
+        renderPreviewWithTransform(); 
+    }; 
+    img.src = vectorizeImageSrc; 
+}
+
+function loadImageForVectorization(imageUrl) {
+    vectorizeImageSrc = imageUrl;
+    document.getElementById('vectorize-modal').classList.remove('hidden');
+    // On reset les valeurs par défaut
+    document.getElementById('threshold-slider').value = 128;
+    document.getElementById('simplify-slider').value = 1.5;
+    updatePreviewCanvas();
+}
+
+function runVectorization() {
+    if (!vectorizeImageSrc) return;
+
+    const img = new Image();
+    img.onload = () => {
+        // --- AMÉLIORATION HD ---
+        // On définit une largeur de travail cible (ex: 2000px) pour avoir des contours nets
+        const targetWidth = 2000;
+        const scaleFactor = targetWidth / img.width;
+        const targetHeight = img.height * scaleFactor;
+
+        const offscreenCanvas = document.createElement('canvas');
+        offscreenCanvas.width = targetWidth;
+        offscreenCanvas.height = targetHeight;
+        
+        const ctx = offscreenCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true; // Lissage ON
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+        const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
+        const threshold = parseInt(document.getElementById('threshold-slider').value);
+        const data = imageData.data;
+
+        // Binarisation virtuelle
+        // On ne modifie pas imageData ici, on construit binaryMap directement
+        const binaryMap = new Array(Math.floor(targetHeight)).fill(0).map(() => new Array(Math.floor(targetWidth)).fill(0));
+        
+        for (let y = 0; y < targetHeight; y++) {
+            for (let x = 0; x < targetWidth; x++) {
+                const idx = (Math.floor(y) * targetWidth + Math.floor(x)) * 4;
+                const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
+                const avg = (r + g + b) / 3;
+                
+                // Logique de détection : Pixel visible ET couleur sous le seuil (sombre)
+                // OU Pixel visible ET couleur inversée (si fond sombre)
+                // Ici on utilise une logique standard : Alpha doit être présent.
+                
+                if (a > 50) { // Si pas transparent
+                   // Si c'est sombre par rapport au seuil, c'est de la matière
+                   // (Ajustez > ou < selon si votre SVG est blanc sur noir ou noir sur blanc)
+                   // Par défaut : Noir = Matière
+                   if (avg < threshold) {
+                       binaryMap[y][x] = 1;
+                   }
+                }
+            }
+        }
+
+        let minArea = parseInt(document.getElementById('min-area-slider').value);
+        // Adaptation du minArea à l'échelle HD
+        minArea = minArea * (scaleFactor * scaleFactor * 0.1); 
+
+        const epsilon = parseFloat(document.getElementById('simplify-slider').value);
+        const maxPoints = parseInt(document.getElementById('max-points-slider').value);
+
+        const contours = findContours(binaryMap)
+            .map(c => douglasPeucker(c, epsilon))
+            .filter(c => c.length >= 3 && c.length <= maxPoints && Math.abs(polygonArea(c)) >= minArea);
+
+        addContoursAsPolygons(contours, targetWidth, targetHeight);
+
+        document.getElementById('vectorize-modal').classList.add('hidden');
+    };
+    img.src = vectorizeImageSrc;
+}
+
+function addContoursAsPolygons(contours, sourceWidth, sourceHeight) {
+    if (!projectData) { alert(translations[currentLang].alertNoProject); return; }
+    const targetScreen = getActiveScreen();
+    if (!targetScreen) { alert(translations[currentLang].alertNoScreen); return; }
+
+    const compWidth = projectData.compositionWidth;
+    const compHeight = projectData.compositionHeight;
+
+    // Calcul pour faire rentrer l'image vectorisée dans la composition (Fit)
+    const scale = Math.min(compWidth / sourceWidth, compHeight / sourceHeight) * 0.8; // 0.8 marge
+    
+    const offsetX = (compWidth - sourceWidth * scale) / 2;
+    const offsetY = (compHeight - sourceHeight * scale) / 2;
+
+    const newIds = [];
+    contours.forEach((contour, index) => {
+        const newPoly = {
+            type: 'Polygon',
+            uniqueId: generateUniqueId(),
+            name: `Forme ${index + 1}`,
+            enabled: true,
+            points: contour.map(p => ({
+                x: p.x * scale + offsetX,
+                y: p.y * scale + offsetY
+            }))
+        };
+        targetScreen.layers.push(newPoly);
+        newIds.push(newPoly.uniqueId);
+    });
+
+    appState.selectedItemIds = newIds;
+    saveState();
+    renderAll();
+}
+
+async function handleAiLayoutGeneration() {
+    const userInput = document.getElementById('ai-prompt').value; if (!userInput) { alert("Veuillez entrer une description."); return; }
+    const spinner = document.getElementById('ai-spinner'); const generateBtn = document.getElementById('confirm-ai-layout-btn');
+    spinner.classList.remove('hidden'); generateBtn.disabled = true;
+    const { compositionWidth, compositionHeight } = projectData;
+    const systemPrompt = `You are an expert vector artist specializing in creating complex shapes from simple polygons for video mapping. The user will provide a subject. Your task is to deconstruct this subject into multiple named layers ('Slice' or 'Polygon'). For a complex subject like 'Eiffel Tower', you must create separate polygons for the base, the different levels, and the antenna. For a subject like 'dragon', create separate polygons for the head, wings, body, and tail. Respond ONLY with a valid JSON object string. Do not use markdown backticks. Do not add any explanation. The JSON object must contain a single key "layers", which is an array of layer objects. Each layer object must have keys: "type" (string, one of "Slice", "Polygon"), "name" (string, in French), and "points" (an array of {x: number, y: number} objects). Ensure all coordinates are within the ${compositionWidth}x${compositionHeight} boundaries.`;
+    const payload = { contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\nUser request: "${userInput}"` }] }] };
+    try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!response.ok) { let errorBody = await response.text(); throw new Error(`API request failed with status ${response.status}: ${errorBody}`); }
+        const result = await response.json();
+        if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0]) {
+            const jsonText = result.candidates[0].content.parts[0].text;
+            const cleanedJsonText = jsonText.replace(/```json\n?/, '').replace(/```$/, '');
+            const generatedData = JSON.parse(cleanedJsonText);
+            if (generatedData.layers && Array.isArray(generatedData.layers)) {
+                addGeneratedLayers(generatedData.layers); document.getElementById('ai-layout-modal').classList.add('hidden');
+            } else { throw new Error("Invalid data structure in JSON. Expected a 'layers' array."); }
+        } else { throw new Error("No content received from AI."); }
+    } catch (error) { console.error("Error with Gemini API:", error); let userMessage = `Une erreur est survenue: ${error.message}.`; if (String(error.message).includes("400")) { userMessage += "\n\n(Erreur 400 : La requête est invalide. Vérifiez que l'API est activée dans votre projet Google Cloud et que la clé est correcte.)"; } else if (String(error.message).includes("401") || String(error.message).includes("403")) { userMessage += "\n\n(Erreur 401/403 : L'authentification a échoué. Votre clé d'API est probablement invalide ou n'a pas les permissions nécessaires.)"; } alert(userMessage);
+    } finally { spinner.classList.add('hidden'); generateBtn.disabled = false; }
+}
+function addGeneratedLayers(layers) { if (!projectData) { alert("Aucun projet ouvert."); return; } const targetScreen = getActiveScreen(); if (!targetScreen) { alert("Aucun Screen disponible ou sélectionné."); return; } const newIds = []; layers.forEach(layerData => { const newLayer = { type: layerData.type || 'Polygon', uniqueId: generateUniqueId(), name: layerData.name || 'AI Layer', enabled: true, points: layerData.points || [] }; targetScreen.layers.push(newLayer); newIds.push(newLayer.uniqueId); }); appState.selectedItemIds = newIds; appState.lastClickedItemId = newIds.length > 0 ? newIds[newIds.length - 1] : null; saveState(); renderAll(); }
+function findContours(bm) { const w=bm[0].length, h=bm.length, c=[], v=new Array(h).fill(0).map(()=>new Array(w).fill(false)); for(let y=0;y<h;y++) for(let x=0;x<w;x++) if(bm[y][x]===1 && !v[y][x]) c.push(traceContour(bm,x,y,v)); return c; }
+function traceContour(m,sX,sY,v) { const c=[]; let x=sX,y=sY,d=0; const D=[[1,0],[0,-1],[-1,0],[0,1]]; let sc=0; while(sc++<2*(m.length*m[0].length)){ c.push({x,y}); v[y][x]=true; d=(d+3)%4; let fN=false; for(let i=0;i<4;i++){ const nX=x+D[d][0],nY=y+D[d][1]; if(nX>=0&&nX<m[0].length&&nY>=0&&nY<m.length&&m[nY][nX]===1){x=nX;y=nY;fN=true;break;} d=(d+1)%4;} if(x===sX&&y===sY)break; if(!fN)return c;} return c;}
+function douglasPeucker(p,e) { if(p.length<3)return p; let dM=0,idx=0; const end=p.length-1; for(let i=1;i<end;i++){const d=perpendicularDistance(p[i],p[0],p[end]);if(d>dM){idx=i;dM=d;}} if(dM>e){const r1=douglasPeucker(p.slice(0,idx+1),e),r2=douglasPeucker(p.slice(idx),e); return r1.slice(0,r1.length-1).concat(r2);} else {return[p[0],p[end]];}}
+function perpendicularDistance(p,p1,p2) { const dx=p2.x-p1.x,dy=p2.y-p1.y,m2=dx*dx+dy*dy; if(m2===0)return pointDistance(p,p1); return Math.abs(dy*p.x-dx*p.y+p2.x*p1.y-p2.y*p1.x)/Math.sqrt(m2); }
+function polygonArea(p) { let a=0; for(let i=0,j=p.length-1;i<p.length;j=i++) a+=(p[j].x+p[i].x)*(p[j].y-p[i].y); return a/2; }
+
+// --- I18N ---
+function setLanguage(lang) {
+    if (!translations[lang]) return;
+    currentLang = lang;
+    localStorage.setItem('resolumeEditorLang', lang);
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        el.textContent = translations[lang][key];
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        el.placeholder = translations[lang][key];
+    });
+    document.getElementById('language-switcher').value = lang;
+    renderInspector(); // Re-render inspector for property names
+}
+
+// --- INITIALIZATION ---
+document.addEventListener('DOMContentLoaded', () => {
+    setupEventListeners();
+    setupVectorizeModal();
+    setLanguage(currentLang);
+    saveState();
+});
+
+</script>
+</body>
+</html>
