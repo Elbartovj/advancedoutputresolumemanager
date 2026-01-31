@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Éditeur Advanced Output pour Resolume</title>
+    <title>Éditeur Advanced Output pour Resolume (Version Finale Optimisée)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -154,24 +154,34 @@
 </head>
 <body>
     <div class="main-container">
-        <!-- Barre d'outils supérieure -->
         <div class="top-bar">
             <button id="new-project-btn" class="btn"><i class="fas fa-file"></i> <span data-i18n="newProject">Nouveau Projet</span></button>
             <button id="open-xml-btn" class="btn"><i class="fas fa-folder-open"></i> <span data-i18n="openXml">Ouvrir XML</span></button>
             <input type="file" id="xml-file-input" accept=".xml" class="hidden">
             <button id="save-xml-btn" class="btn"><i class="fas fa-save"></i> <span data-i18n="saveXml">Enregistrer XML</span></button>
+            
             <div class="w-px h-6 bg-gray-600"></div>
+            
             <button id="add-guide-btn" class="btn"><i class="fas fa-map"></i> <span data-i18n="addGuide">Ajouter Guide</span></button>
             <input type="file" id="guide-file-input" accept="image/*" class="hidden">
+            
             <button id="import-image-btn" class="btn"><i class="fas fa-image"></i> <span data-i18n="importImage">Importer Image</span></button>
             <input type="file" id="image-file-input" accept="image/*" class="hidden">
+
+            <button id="import-svg-btn" class="btn"><i class="fas fa-bezier-curve"></i> Importer SVG</button>
+            <input type="file" id="svg-file-input" accept=".svg" class="hidden">
+            
             <div class="w-px h-6 bg-gray-600"></div>
+            
             <button id="add-screen-btn" class="btn"><i class="fas fa-desktop"></i> <span data-i18n="newScreen">Nouveau Screen</span></button>
             <button id="add-slice-btn" class="btn"><i class="fas fa-clone"></i> <span data-i18n="newSlice">Nouveau Slice</span></button>
             <button id="add-poly-btn" class="btn"><i class="fas fa-draw-polygon"></i> <span data-i18n="newPolygon">Nouveau Polygone (P)</span></button>
             <button id="add-mask-btn" class="btn"><i class="fas fa-mask"></i> <span data-i18n="newMask">Nouveau Masque (M)</span></button>
+            
             <div class="w-px h-6 bg-gray-600"></div>
+            
             <button id="ai-layout-btn" class="btn"><i class="fas fa-magic"></i> <span data-i18n="aiAssistant">✨ Assistant IA</span></button>
+            
             <div class="flex-grow"></div>
             <select id="language-switcher">
                 <option value="fr">Français</option>
@@ -228,10 +238,10 @@
 
     <div id="vectorize-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <h2 class="text-xl font-bold mb-4" data-i18n="modalVectorizeTitle">Vectoriser l'image</h2>
+            <h2 class="text-xl font-bold mb-4" data-i18n="modalVectorizeTitle">Vectoriser / Importer</h2>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <h3 class="font-semibold mb-2" data-i18n="preview">Aperçu (Zoom: Molette, Déplacer: Clic milieu)</h3>
+                    <h3 class="font-semibold mb-2" data-i18n="preview">Aperçu</h3>
                     <div id="preview-canvas-container" class="w-full h-64 bg-black border border-gray-500 rounded overflow-hidden relative">
                          <canvas id="preview-canvas"></canvas>
                     </div>
@@ -241,20 +251,20 @@
                     <div class="prop-grid gap-y-4">
                         <label data-i18n="threshold">Seuil (0-255)</label>
                         <div class="flex items-center gap-2">
-                            <input type="range" id="threshold-slider" min="0" max="255" value="100" class="w-full">
-                            <span id="threshold-value" class="w-8 text-center">100</span>
+                            <input type="range" id="threshold-slider" min="0" max="255" value="128" class="w-full">
+                            <span id="threshold-value" class="w-8 text-center">128</span>
                         </div>
                         <label data-i18n="minArea">Aire min. (px)</label>
                         <div class="flex items-center gap-2">
-                             <input type="range" id="min-area-slider" min="10" max="2000" value="100" class="w-full">
-                             <span id="min-area-value" class="w-12 text-center">100</span>
+                             <input type="range" id="min-area-slider" min="10" max="2000" value="50" class="w-full">
+                             <span id="min-area-value" class="w-12 text-center">50</span>
                         </div>
-                        <label data-i18n="simplify">Facteur de simplification</label>
+                        <label data-i18n="simplify">Simplification</label>
                         <div class="flex items-center gap-2">
                              <input type="range" id="simplify-slider" min="0.1" max="10" step="0.1" value="1.5" class="w-full">
                              <span id="simplify-value" class="w-12 text-center">1.5</span>
                         </div>
-                         <label data-i18n="maxPoints">Points max. par polygone</label>
+                         <label data-i18n="maxPoints">Points max/poly</label>
                         <div class="flex items-center gap-2">
                              <input type="range" id="max-points-slider" min="3" max="500" value="150" class="w-full">
                              <span id="max-points-value" class="w-12 text-center">150</span>
@@ -264,7 +274,7 @@
             </div>
             <div class="mt-6 flex justify-end gap-4">
                 <button id="cancel-vectorize-btn" class="btn" data-i18n="cancel">Annuler</button>
-                <button id="confirm-vectorize-btn" class="btn" data-i18n="vectorizeAndAdd">Vectoriser et Ajouter</button>
+                <button id="confirm-vectorize-btn" class="btn" data-i18n="vectorizeAndAdd">Générer les Polygones</button>
             </div>
         </div>
     </div>
@@ -298,7 +308,7 @@ const translations = {
         newProject: "Nouveau Projet", openXml: "Ouvrir XML", saveXml: "Enregistrer XML", addGuide: "Ajouter Guide", importImage: "Importer Image", newScreen: "Nouveau Screen", newSlice: "Nouveau Slice", newPolygon: "Nouveau Polygone (P)", newMask: "Nouveau Masque (M)", aiAssistant: "✨ Assistant IA",
         hierarchy: "Hiérarchie", canvas: "Canevas", inspector: "Inspecteur", projectNotLoaded: "Projet non chargé", hierarchyHelp: "Créez un nouveau projet ou ouvrez un fichier XML.", inspectorHelp: "Sélectionnez un élément pour voir ses propriétés.",
         modalNewProjectTitle: "Nouveau Projet", widthPx: "Largeur (px)", heightPx: "Hauteur (px)", cancel: "Annuler", create: "Créer",
-        modalVectorizeTitle: "Vectoriser l'image", preview: "Aperçu", settings: "Paramètres", threshold: "Seuil (0-255)", minArea: "Aire min. (px)", simplify: "Facteur de simplification", maxPoints: "Points max. par polygone", vectorizeAndAdd: "Vectoriser et Ajouter",
+        modalVectorizeTitle: "Vectoriser / Importer", preview: "Aperçu", settings: "Paramètres", threshold: "Seuil (0-255)", minArea: "Aire min. (px)", simplify: "Simplification", maxPoints: "Points max. par polygone", vectorizeAndAdd: "Générer les Polygones",
         aiAssistantTitle: "✨ Assistant de Disposition IA", aiAssistantHelp: "Décrivez la disposition géométrique ou la forme complexe que vous souhaitez créer.", yourRequest: "Votre demande :", aiPromptPlaceholder: "Ex: Une grille de 3x3 slices, une silhouette de la Tour Eiffel...", generate: "Générer",
         alertNoProject: "Veuillez créer un projet avant d'ajouter un calque.", alertNoScreen: "Aucun Screen sélectionné ou existant.", alertNoProjectSave: "Aucun projet à sauvegarder.",
         alertHiddenDelete: (count) => `${count} élément(s) masqué(s) dans la sélection n'ont pas été supprimé(s).`,
@@ -309,7 +319,7 @@ const translations = {
         newProject: "New Project", openXml: "Open XML", saveXml: "Save XML", addGuide: "Add Guide", importImage: "Import Image", newScreen: "New Screen", newSlice: "New Slice", newPolygon: "New Polygon (P)", newMask: "New Mask (M)", aiAssistant: "✨ AI Assistant",
         hierarchy: "Hierarchy", canvas: "Canvas", inspector: "Inspector", projectNotLoaded: "No project loaded", hierarchyHelp: "Create a new project or open an XML file.", inspectorHelp: "Select an item to see its properties.",
         modalNewProjectTitle: "New Project", widthPx: "Width (px)", heightPx: "Height (px)", cancel: "Cancel", create: "Create",
-        modalVectorizeTitle: "Vectorize Image", preview: "Preview", settings: "Settings", threshold: "Threshold (0-255)", minArea: "Min Area (px)", simplify: "Simplification factor", maxPoints: "Max points per polygon", vectorizeAndAdd: "Vectorize and Add",
+        modalVectorizeTitle: "Vectorize / Import", preview: "Preview", settings: "Settings", threshold: "Threshold (0-255)", minArea: "Min Area (px)", simplify: "Simplification", maxPoints: "Max points per polygon", vectorizeAndAdd: "Generate Polygons",
         aiAssistantTitle: "✨ AI Layout Assistant", aiAssistantHelp: "Describe the geometric layout or complex shape you want to create.", yourRequest: "Your request:", aiPromptPlaceholder: "Ex: A 3x3 grid of slices, a silhouette of the Eiffel Tower...", generate: "Generate",
         alertNoProject: "Please create a project before adding a layer.", alertNoScreen: "No Screen selected or available.", alertNoProjectSave: "No project to save.",
         alertHiddenDelete: (count) => `${count} hidden item(s) in selection were not deleted.`,
@@ -540,6 +550,11 @@ function setupEventListeners() {
     document.getElementById('save-xml-btn').addEventListener('click', handleXmlFileSave);
     document.getElementById('add-guide-btn').addEventListener('click', () => document.getElementById('guide-file-input').click());
     document.getElementById('import-image-btn').addEventListener('click', () => document.getElementById('image-file-input').click());
+    
+    // SVG LISTENERS
+    document.getElementById('import-svg-btn').addEventListener('click', () => document.getElementById('svg-file-input').click());
+    document.getElementById('svg-file-input').addEventListener('change', handleSvgFileImport);
+
     document.getElementById('add-screen-btn').addEventListener('click', createNewScreen);
     document.getElementById('add-slice-btn').addEventListener('click', createNewSlice);
     document.getElementById('add-poly-btn').addEventListener('click', () => enterCreationMode('Polygon'));
@@ -562,18 +577,21 @@ function setupEventListeners() {
     // Canvas Setup
     const mainContainer = document.getElementById('canvas-container');
     const previewContainer = document.getElementById('preview-canvas-container');
+    
     const resizeObserver = new ResizeObserver(entries => {
         for (const entry of entries) {
             const canvas = entry.target.querySelector('canvas');
             if (canvas) {
                 const { width, height } = entry.contentRect;
                 canvas.width = width; canvas.height = height;
-                if (canvas.id === 'main-canvas') renderCanvas(); else updatePreviewCanvas();
+                if (canvas.id === 'main-canvas') renderCanvas();
+                else if (canvas.id === 'preview-canvas') updatePreviewCanvas();
             }
         }
     });
     resizeObserver.observe(mainContainer);
     resizeObserver.observe(previewContainer);
+
     setupCanvasPanAndZoom(mainContainer, appState.mainViewTransform, renderCanvas, handleCanvasMouseDown, handleCanvasMouseMove, handleCanvasMouseUp, handleCanvasDoubleClick);
     setupCanvasPanAndZoom(previewContainer, appState.previewViewTransform, renderPreviewWithTransform);
     
@@ -955,20 +973,197 @@ function redo() {
     }
 }
 
-// --- IMAGE VECTORIZATION & AI ---
+// --- IMAGE & SVG VECTORIZATION (RASTER METHOD) ---
 let vectorizeImageSrc = null;
+
 function getActiveScreen() { if (!projectData || projectData.screens.length === 0) return null; if (appState.selectedItemIds.length > 0) { const lastSelectedId = appState.selectedItemIds[appState.selectedItemIds.length - 1]; const item = findItemById(lastSelectedId); if (item) { if (item.type === 'Screen') return item; return projectData.screens.find(s => s.layers.some(l => l.uniqueId === item.uniqueId)); } } return projectData.screens[0]; }
+
 function handleImageFileImport(event) { const file = event.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (e) => { loadImageForVectorization(e.target.result); }; reader.readAsDataURL(file); } }
-function setupVectorizeModal() { ['threshold', 'min-area', 'simplify', 'max-points'].forEach(id => { document.getElementById(`${id}-slider`).addEventListener('input', e => { document.getElementById(`${id}-value`).textContent = e.target.value; if (id === 'threshold') renderPreviewWithTransform(); }); }); document.getElementById('cancel-vectorize-btn').addEventListener('click', () => document.getElementById('vectorize-modal').classList.add('hidden')); document.getElementById('confirm-vectorize-btn').addEventListener('click', runVectorization); }
-function renderPreviewWithTransform() { if (!vectorizeImageSrc) return; const img = new Image(); img.onload = () => { const canvas = document.getElementById('preview-canvas'), ctx = canvas.getContext('2d'), { width, height } = canvas; ctx.fillStyle = 'black'; ctx.fillRect(0, 0, width, height); ctx.save(); ctx.translate(appState.previewViewTransform.offsetX, appState.previewViewTransform.offsetY); ctx.scale(appState.previewViewTransform.scale, appState.previewViewTransform.scale); ctx.drawImage(img, 0, 0); const threshold = parseInt(document.getElementById('threshold-slider').value); const imageData = ctx.getImageData(0, 0, img.width, img.height); const data = imageData.data; for (let i = 0; i < data.length; i += 4) { const avg = (data[i] + data[i + 1] + data[i + 2]) / 3, color = avg > threshold ? 255 : 0; data[i] = data[i+1] = data[i+2] = color; } ctx.putImageData(imageData, 0, 0); ctx.restore(); }; img.src = vectorizeImageSrc; }
-function updatePreviewCanvas() { if (!vectorizeImageSrc) return; const img = new Image(); img.onload = () => { const canvas = document.getElementById('preview-canvas'); const scaleX = canvas.width/img.width, scaleY = canvas.height/img.height; appState.previewViewTransform.scale = Math.min(scaleX, scaleY); appState.previewViewTransform.offsetX = (canvas.width - img.width * appState.previewViewTransform.scale) / 2; appState.previewViewTransform.offsetY = (canvas.height - img.height * appState.previewViewTransform.scale) / 2; renderPreviewWithTransform(); }; img.src = vectorizeImageSrc; }
+
+// Modification pour traiter le SVG comme une image (DataURL)
+function handleSvgFileImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        // ON UTILISE LA MÊME MÉTHODE QUE POUR LES IMAGES
+        loadImageForVectorization(e.target.result);
+        event.target.value = ''; 
+    };
+    reader.readAsDataURL(file);
+}
+
+function setupVectorizeModal() { 
+    ['threshold', 'min-area', 'simplify', 'max-points'].forEach(id => { 
+        document.getElementById(`${id}-slider`).addEventListener('input', e => { 
+            document.getElementById(`${id}-value`).textContent = e.target.value; 
+            if (id === 'threshold') renderPreviewWithTransform(); 
+        }); 
+    }); 
+    document.getElementById('cancel-vectorize-btn').addEventListener('click', () => document.getElementById('vectorize-modal').classList.add('hidden')); 
+    document.getElementById('confirm-vectorize-btn').addEventListener('click', runVectorization); 
+}
+
+function renderPreviewWithTransform() { 
+    if (!vectorizeImageSrc) return; 
+    const img = new Image(); 
+    img.onload = () => { 
+        const canvas = document.getElementById('preview-canvas'), ctx = canvas.getContext('2d'), { width, height } = canvas; 
+        ctx.fillStyle = 'black'; 
+        ctx.fillRect(0, 0, width, height); 
+        ctx.save(); 
+        ctx.translate(appState.previewViewTransform.offsetX, appState.previewViewTransform.offsetY); 
+        ctx.scale(appState.previewViewTransform.scale, appState.previewViewTransform.scale); 
+        ctx.drawImage(img, 0, 0); 
+        const threshold = parseInt(document.getElementById('threshold-slider').value); 
+        // Note: getImageData ici est juste pour l'aperçu visuel, pas le calcul final
+        // Pour un gros SVG, ça peut être lent, on pourrait optimiser si besoin
+        // mais pour l'instant on laisse tel quel pour l'aperçu.
+        try {
+            const scaledW = img.width; 
+            const scaledH = img.height;
+            // On dessine juste l'image brute pour l'aperçu si elle est très grande
+            // Sinon on applique le seuil visuellement
+            if (scaledW * scaledH < 4000000) { 
+                const imageData = ctx.getImageData(0, 0, img.width, img.height); 
+                const data = imageData.data; 
+                for (let i = 0; i < data.length; i += 4) { 
+                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3, color = avg > threshold ? 255 : 0; 
+                    data[i] = data[i+1] = data[i+2] = color; 
+                } 
+                ctx.putImageData(imageData, 0, 0); 
+            }
+        } catch(e) {}
+        ctx.restore(); 
+    }; 
+    img.src = vectorizeImageSrc; 
+}
+
+function updatePreviewCanvas() { 
+    if (!vectorizeImageSrc) return; 
+    const img = new Image(); 
+    img.onload = () => { 
+        const canvas = document.getElementById('preview-canvas'); 
+        const scaleX = canvas.width/img.width, scaleY = canvas.height/img.height; 
+        appState.previewViewTransform.scale = Math.min(scaleX, scaleY); 
+        appState.previewViewTransform.offsetX = (canvas.width - img.width * appState.previewViewTransform.scale) / 2; 
+        appState.previewViewTransform.offsetY = (canvas.height - img.height * appState.previewViewTransform.scale) / 2; 
+        renderPreviewWithTransform(); 
+    }; 
+    img.src = vectorizeImageSrc; 
+}
+
 function loadImageForVectorization(imageUrl) {
     vectorizeImageSrc = imageUrl;
     document.getElementById('vectorize-modal').classList.remove('hidden');
+    // On reset les valeurs par défaut
+    document.getElementById('threshold-slider').value = 128;
+    document.getElementById('simplify-slider').value = 1.5;
     updatePreviewCanvas();
 }
-function runVectorization() { if (!vectorizeImageSrc) return; const img = new Image(); img.onload = () => { const offscreenCanvas = document.createElement('canvas'); offscreenCanvas.width = img.width; offscreenCanvas.height = img.height; const ctx = offscreenCanvas.getContext('2d'); ctx.drawImage(img, 0, 0); const imageData = ctx.getImageData(0, 0, img.width, img.height), threshold = parseInt(document.getElementById('threshold-slider').value), data = imageData.data; for (let i = 0; i < data.length; i += 4) { const avg = (data[i] + data[i + 1] + data[i + 2]) / 3; data[i] = data[i+1] = data[i+2] = avg > threshold ? 255 : 0; } const binaryMap = new Array(img.height).fill(0).map(() => new Array(img.width).fill(0)); for (let y=0; y<img.height; y++) for (let x=0; x<img.width; x++) if (data[(y*img.width+x)*4] === 0) binaryMap[y][x] = 1; const minArea = parseInt(document.getElementById('min-area-slider').value), epsilon = parseFloat(document.getElementById('simplify-slider').value), maxPoints = parseInt(document.getElementById('max-points-slider').value); const contours = findContours(binaryMap).map(c => douglasPeucker(c, epsilon)).filter(c => c.length >= 3 && c.length <= maxPoints && Math.abs(polygonArea(c)) >= minArea); addContoursAsPolygons(contours, img.width, img.height); document.getElementById('vectorize-modal').classList.add('hidden'); }; img.src = vectorizeImageSrc; }
-function addContoursAsPolygons(contours, imgWidth, imgHeight) { if (!projectData) { alert(translations[currentLang].alertNoProject); return; } const targetScreen = getActiveScreen(); if (!targetScreen) { alert(translations[currentLang].alertNoScreen); return; } const compWidth = projectData.compositionWidth, compHeight = projectData.compositionHeight; const scale = Math.min(compWidth/imgWidth, compHeight/imgHeight); const offsetX = (compWidth - imgWidth*scale)/2, offsetY = (compHeight - imgHeight*scale)/2; contours.forEach((contour, index) => { const newPoly = { type: 'Polygon', uniqueId: generateUniqueId(), name: `Poly Img ${index + 1}`, enabled: true, points: contour.map(p => ({ x: p.x*scale + offsetX, y: p.y*scale + offsetY }))}; targetScreen.layers.push(newPoly); }); saveState(); renderAll(); }
+
+function runVectorization() {
+    if (!vectorizeImageSrc) return;
+
+    const img = new Image();
+    img.onload = () => {
+        // --- AMÉLIORATION HD ---
+        // On définit une largeur de travail cible (ex: 2000px) pour avoir des contours nets
+        const targetWidth = 2000;
+        const scaleFactor = targetWidth / img.width;
+        const targetHeight = img.height * scaleFactor;
+
+        const offscreenCanvas = document.createElement('canvas');
+        offscreenCanvas.width = targetWidth;
+        offscreenCanvas.height = targetHeight;
+        
+        const ctx = offscreenCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true; // Lissage ON
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+        const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
+        const threshold = parseInt(document.getElementById('threshold-slider').value);
+        const data = imageData.data;
+
+        // Binarisation virtuelle
+        // On ne modifie pas imageData ici, on construit binaryMap directement
+        const binaryMap = new Array(Math.floor(targetHeight)).fill(0).map(() => new Array(Math.floor(targetWidth)).fill(0));
+        
+        for (let y = 0; y < targetHeight; y++) {
+            for (let x = 0; x < targetWidth; x++) {
+                const idx = (Math.floor(y) * targetWidth + Math.floor(x)) * 4;
+                const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
+                const avg = (r + g + b) / 3;
+                
+                // Logique de détection : Pixel visible ET couleur sous le seuil (sombre)
+                // OU Pixel visible ET couleur inversée (si fond sombre)
+                // Ici on utilise une logique standard : Alpha doit être présent.
+                
+                if (a > 50) { // Si pas transparent
+                   // Si c'est sombre par rapport au seuil, c'est de la matière
+                   // (Ajustez > ou < selon si votre SVG est blanc sur noir ou noir sur blanc)
+                   // Par défaut : Noir = Matière
+                   if (avg < threshold) {
+                       binaryMap[y][x] = 1;
+                   }
+                }
+            }
+        }
+
+        let minArea = parseInt(document.getElementById('min-area-slider').value);
+        // Adaptation du minArea à l'échelle HD
+        minArea = minArea * (scaleFactor * scaleFactor * 0.1); 
+
+        const epsilon = parseFloat(document.getElementById('simplify-slider').value);
+        const maxPoints = parseInt(document.getElementById('max-points-slider').value);
+
+        const contours = findContours(binaryMap)
+            .map(c => douglasPeucker(c, epsilon))
+            .filter(c => c.length >= 3 && c.length <= maxPoints && Math.abs(polygonArea(c)) >= minArea);
+
+        addContoursAsPolygons(contours, targetWidth, targetHeight);
+
+        document.getElementById('vectorize-modal').classList.add('hidden');
+    };
+    img.src = vectorizeImageSrc;
+}
+
+function addContoursAsPolygons(contours, sourceWidth, sourceHeight) {
+    if (!projectData) { alert(translations[currentLang].alertNoProject); return; }
+    const targetScreen = getActiveScreen();
+    if (!targetScreen) { alert(translations[currentLang].alertNoScreen); return; }
+
+    const compWidth = projectData.compositionWidth;
+    const compHeight = projectData.compositionHeight;
+
+    // Calcul pour faire rentrer l'image vectorisée dans la composition (Fit)
+    const scale = Math.min(compWidth / sourceWidth, compHeight / sourceHeight) * 0.8; // 0.8 marge
+    
+    const offsetX = (compWidth - sourceWidth * scale) / 2;
+    const offsetY = (compHeight - sourceHeight * scale) / 2;
+
+    const newIds = [];
+    contours.forEach((contour, index) => {
+        const newPoly = {
+            type: 'Polygon',
+            uniqueId: generateUniqueId(),
+            name: `Forme ${index + 1}`,
+            enabled: true,
+            points: contour.map(p => ({
+                x: p.x * scale + offsetX,
+                y: p.y * scale + offsetY
+            }))
+        };
+        targetScreen.layers.push(newPoly);
+        newIds.push(newPoly.uniqueId);
+    });
+
+    appState.selectedItemIds = newIds;
+    saveState();
+    renderAll();
+}
+
 async function handleAiLayoutGeneration() {
     const userInput = document.getElementById('ai-prompt').value; if (!userInput) { alert("Veuillez entrer une description."); return; }
     const spinner = document.getElementById('ai-spinner'); const generateBtn = document.getElementById('confirm-ai-layout-btn');
